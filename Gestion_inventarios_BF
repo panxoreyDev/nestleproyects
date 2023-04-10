@@ -20,6 +20,10 @@ import numpy as np
 import tkinter as tk
 import datetime
 import re
+import time
+
+start_time = time.time()
+
 
 
 desktop = os.path.join(os.path.join(os.environ['USERPROFILE']), 'Desktop') 
@@ -55,9 +59,10 @@ def Importar_MasterUpc():
     tipo_dato_MASTER = Master_UPC.dtypes
     print(tipo_dato_MASTER)
 
+
 def Import_BASEF():
     #messagebox.showinfo(message="Ingrese carpeta con archivos FCST ASL", title="Carpeta FCST ASL")
-    #folders = filedialog.askdirectory() # Returns opened path as str
+    #folders = filedialog.askdirectory() # Returns opened path as str    
     global BF_data
     path = BASEFFolder
     csv_files = glob.glob(path + "/*.csv")
@@ -66,11 +71,15 @@ def Import_BASEF():
     df_list = (pd.read_csv(file, encoding="latin1", low_memory=False).assign(filename=file) for file in csv_files)
     # Concatenate all DataFrames
     BASEF_data_cons = pd.concat(df_list, ignore_index=True)
-    #CREA PIVOT TABLE PARA SUMAR Y AGRUPAR DATOS
-    Pivot_BF= pd.pivot_table(BASEF_data_cons, 
-                             values=['Venta35D','Inv Uds Res','Vta Dia','Tránsito Pz','Inventario BI','Faltante bi'], 
-                             index=['upc','filename','Estatus Final','Tienda Num'], 
-                             aggfunc=np.sum)
+
+
+    Pivot_BF = pd.pivot_table(BASEF_data_cons,
+                              values=['Venta35D','Inv Uds Res','Vta Dia','Tránsito Pz','Inventario BI','Faltante bi'],
+                              index=['upc','filename','Estatus Final','Tienda Num'],
+                              aggfunc=np.sum)
+    
+
+    
     #Convierte a DF el pivot
     BF_data = Pivot_BF.reset_index() 
     
@@ -128,9 +137,9 @@ def Calculos():
       #                                and x['Inv'] >= 0
        #                               else 0, axis=1)
     
-    BF_data['0-3'] = BF_data.apply(lambda x: 1 if (np.isinf(x['DOH']) 
-                                                   or np.isnan(x['DOH'])
-                                                   or (x['DOH'] == 0) 
+    BF_data['0-3'] = BF_data.apply(lambda x: 1 if (np.isinf(x['DOH'] and x['Inv'] <= 0) 
+                                                   or np.isnan(x['DOH'] and x['Inv'] <= 0)
+                                                   or (x['DOH'] == 0 and x['Inv'] <= 0) 
                                                    or (x['DOH'] > 0  and x['DOH'] < 3))
                                                    else 0, axis=1)
    
@@ -184,25 +193,30 @@ def Calculos_2nd():
     BF_Detalle["Inv $"] = BF_Detalle["Inv"] * BF_Detalle["Costo"]
     
 
-
+def pivotita():
+    global BF_DetalleResumen
+    BF_DetalleResumen = pd.pivot_table(BF_Detalle, 
+                            values=['Faltante bi'], 
+                            index=['Semana','Tipo_Res','Cat_Vtas_Nes'], 
+                            aggfunc=np.sum)
 
 
 Importar_MasterUpc()
 Import_BASEF()
 Calculos()   
 BF_Detalle()
+pivotita()
 #Calculos_2nd()
 del BF_data
 del BF_basic
 
-
+end_time = time.time()
+duration = end_time - start_time
+print("Tmepo de ejecución:", duration / 60, " minutos")
 
 #MELT la base de forecast Soriana (como la de ASL)
 
 #Cruzar vs forecats Semanal y agregar semana 5 de base fria en csv
 #Cruzar vs Master tiendas Soriana
 # Cruzas vs pedidos Geerdos en 30 días
-#agregar informacion de nivel de servicio
-#agregar dtata de forecast
-#subir info de heb
 
